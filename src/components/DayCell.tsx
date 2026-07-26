@@ -1,4 +1,4 @@
-import type { CellShape, DayCellData } from '../types'
+import type { CellShape, DayCellData, TimeLens } from '../types'
 import {
   formatDisplayDate,
   getDayOfMonth,
@@ -6,12 +6,14 @@ import {
   getWeekdayShort,
   statusLabel,
 } from '../lib/dates'
+import { isLensOpportunity } from '../lib/lenses'
 
 type DayCellProps = {
   cell: DayCellData
   shape?: CellShape
-  /** Calendar mode shows weekday + date structure; compact is color-only. */
   variant?: 'compact' | 'calendar'
+  activeLens?: TimeLens | null
+  dimNonMatching?: boolean
 }
 
 const SHAPE_CLASS: Record<CellShape, string> = {
@@ -20,71 +22,97 @@ const SHAPE_CLASS: Record<CellShape, string> = {
   circle: 'rounded-full',
 }
 
+function buildHoverDetails(
+  cell: DayCellData,
+  activeLens?: TimeLens | null,
+): string {
+  const parts = [
+    formatDisplayDate(cell.date),
+    getWeekdayShort(cell.date),
+    statusLabel(cell.status),
+  ]
+  if (cell.isTarget) parts.push('target date')
+  if (
+    activeLens &&
+    isLensOpportunity(cell.date, cell.status, activeLens)
+  ) {
+    parts.push(`matches “${activeLens.label.trim() || 'lens'}”`)
+  } else if (activeLens) {
+    parts.push('outside active lens')
+  }
+  return parts.join(' · ')
+}
+
+/** Today counts as remaining visually; only passed is grayed out. */
+function fillClasses(status: DayCellData['status'], variant: 'compact' | 'calendar') {
+  if (status === 'passed') {
+    return variant === 'calendar'
+      ? 'border-transparent bg-[var(--cell-passed)] text-[var(--cell-passed-fg)]'
+      : 'border-transparent bg-[var(--cell-passed)]'
+  }
+
+  return variant === 'calendar'
+    ? 'border-transparent bg-[var(--cell-remaining-bg)] text-[var(--cell-remaining-fg)]'
+    : 'border-transparent bg-[var(--cell-remaining-bg)]'
+}
+
 export function DayCell({
   cell,
   shape = 'square',
   variant = 'compact',
+  activeLens = null,
+  dimNonMatching = false,
 }: DayCellProps) {
-  const status = statusLabel(cell.status)
-  const label = `${formatDisplayDate(cell.date)}, ${status}${cell.isTarget ? ', target date' : ''}`
+  const isOpportunity = Boolean(
+    activeLens && isLensOpportunity(cell.date, cell.status, activeLens),
+  )
+  const dimmed = Boolean(activeLens && dimNonMatching && !isOpportunity)
+  const details = buildHoverDetails(cell, activeLens)
 
   if (variant === 'calendar') {
-    return <CalendarDayCell cell={cell} label={label} shape={shape} />
+    return (
+      <CalendarDayCell
+        cell={cell}
+        label={details}
+        shape={shape}
+        dimmed={dimmed}
+      />
+    )
   }
 
-  return <CompactDayCell cell={cell} label={label} shape={shape} />
+  return (
+    <CompactDayCell
+      cell={cell}
+      label={details}
+      shape={shape}
+      dimmed={dimmed}
+    />
+  )
 }
 
 function CompactDayCell({
   cell,
   label,
   shape,
+  dimmed,
 }: {
   cell: DayCellData
   label: string
   shape: CellShape
+  dimmed: boolean
 }) {
-  const statusClasses =
-    cell.status === 'passed'
-      ? 'border-[var(--cell-passed-border)] bg-[var(--cell-passed)]'
-      : cell.status === 'today'
-        ? 'border-transparent bg-[var(--cell-today-bg)] shadow-[0_0_0_3px_var(--cell-today-ring)]'
-        : 'border-transparent bg-[var(--cell-remaining-bg)]'
-
-  const targetClasses = cell.isTarget
-    ? 'shadow-[0_0_0_3px_var(--cell-target-ring)]'
-    : ''
-
-  const todayAndTarget =
-    cell.status === 'today' && cell.isTarget
-      ? 'shadow-[0_0_0_3px_var(--cell-today-ring),0_0_0_6px_var(--cell-target-ring)]'
-      : ''
-
   return (
     <div
       role="gridcell"
       aria-label={label}
       title={label}
-      className={`relative aspect-square w-full min-w-0 border ${SHAPE_CLASS[shape]} ${statusClasses} ${todayAndTarget || targetClasses}`}
+      className={`group relative aspect-square w-full min-w-0 border ${SHAPE_CLASS[shape]} ${fillClasses(cell.status, 'compact')} ${
+        dimmed ? 'opacity-20' : ''
+      }`}
       data-date={cell.date}
       data-status={cell.status}
     >
-      {cell.isTarget ? (
-        <span
-          aria-hidden="true"
-          className={`absolute inset-x-[20%] bottom-[18%] h-1 rounded-full ${
-            cell.status === 'passed'
-              ? 'bg-[var(--muted)]'
-              : 'bg-[var(--cell-target-mark)]'
-          }`}
-        />
-      ) : null}
-      {cell.status === 'today' ? (
-        <span
-          aria-hidden="true"
-          className={`absolute inset-[15%] border border-[var(--cell-today-inner)] ${SHAPE_CLASS[shape]}`}
-        />
-      ) : null}
+      <HoverTip text={label} />
     </div>
   )
 }
@@ -93,32 +121,25 @@ function CalendarDayCell({
   cell,
   label,
   shape,
+  dimmed,
 }: {
   cell: DayCellData
   label: string
   shape: CellShape
+  dimmed: boolean
 }) {
   const weekday = getWeekdayShort(cell.date)
   const day = getDayOfMonth(cell.date)
   const month = getMonthShort(cell.date)
-
-  const statusClasses =
-    cell.status === 'passed'
-      ? 'border-[var(--cell-passed-border)] bg-[var(--cell-passed)] text-[var(--cell-passed-fg)]'
-      : cell.status === 'today'
-        ? 'border-[var(--cell-today-ring)] bg-[var(--cell-today-bg)] text-[var(--cell-today-fg)] shadow-[0_0_0_2px_var(--cell-today-ring)]'
-        : 'border-transparent bg-[var(--cell-remaining-bg)] text-[var(--cell-remaining-fg)]'
-
-  const targetClasses = cell.isTarget
-    ? 'ring-2 ring-[var(--cell-target-ring)] ring-offset-2 ring-offset-[var(--bg)]'
-    : ''
 
   return (
     <div
       role="gridcell"
       aria-label={label}
       title={label}
-      className={`relative flex min-h-[4.5rem] w-full min-w-0 flex-col items-center justify-between border px-1.5 py-1.5 ${SHAPE_CLASS[shape]} ${statusClasses} ${targetClasses}`}
+      className={`group relative flex min-h-[4.5rem] w-full min-w-0 flex-col items-center justify-between border px-1.5 py-1.5 ${SHAPE_CLASS[shape]} ${fillClasses(cell.status, 'calendar')} ${
+        dimmed ? 'opacity-20' : ''
+      }`}
       data-date={cell.date}
       data-status={cell.status}
     >
@@ -132,20 +153,18 @@ function CalendarDayCell({
         {month}
       </span>
 
-      {(cell.status === 'today' || cell.isTarget) && (
-        <div className="absolute -top-2 left-1/2 flex -translate-x-1/2 gap-1">
-          {cell.status === 'today' ? (
-            <span className="rounded bg-[var(--cell-today-ring)] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-[var(--cell-today-badge-fg)]">
-              Today
-            </span>
-          ) : null}
-          {cell.isTarget ? (
-            <span className="rounded bg-[var(--cell-target-ring)] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-[var(--cell-target-badge-fg)]">
-              End
-            </span>
-          ) : null}
-        </div>
-      )}
+      <HoverTip text={label} />
     </div>
+  )
+}
+
+function HoverTip({ text }: { text: string }) {
+  return (
+    <span
+      role="tooltip"
+      className="pointer-events-none absolute bottom-[calc(100%+0.4rem)] left-1/2 z-40 hidden w-max max-w-[12rem] -translate-x-1/2 rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-left text-[10px] leading-snug text-[var(--text-secondary)] opacity-0 shadow-lg shadow-black/40 group-hover:block group-hover:opacity-100 group-focus-within:block group-focus-within:opacity-100"
+    >
+      {text}
+    </span>
   )
 }
