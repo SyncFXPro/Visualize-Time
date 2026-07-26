@@ -1,32 +1,122 @@
-# React + TypeScript + Vite
+# Visualize Time
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+A local countdown visualizer that answers a simple question: **how much time do you still have — and in what shapes?**
 
-Currently, two official plugins are available:
+Instead of only showing “76 days,” it breaks the interval into left / passed / total / % elapsed, and adds **time lenses** so you can count remaining opportunities like weekends, weekdays, Mondays, or gym days.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+No backend, accounts, or calendar sync. Everything persists in `localStorage`.
 
-## React Compiler
+## Features
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **Countdown grid** from the day after the start date through the target date (inclusive)
+- **Summary line** — e.g. `37 days left · 39 passed · 76 total · 51% elapsed` plus a progress bar
+- **Calendar** and **Compact** visualization modes
+- **Cell shapes** — square, rounded, or circle
+- **Show months** toggle in compact mode
+- **Time lenses** — highlight matching days still ahead and count remaining opportunities  
+  - Sat + Sun count as weekend *units* (2 days → 1 weekend)  
+  - Other lenses count days 1:1
+- **Custom lenses** — label, selected weekdays, date exclusions
+- **Multiple saved countdowns**
+- **Hidden config drawer** (top-left), live clock (top-right), fullscreen mode
+- **Dark monochrome UI** with timezone-safe calendar-date math (no UTC shifting of `YYYY-MM-DD`)
 
-## Expanding the Oxlint configuration
+## Stack
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+- Vite + React + TypeScript
+- Tailwind CSS v4 (`@tailwindcss/vite`)
+- Vitest + Oxlint
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+## Getting started
+
+```bash
+npm install
+npm run dev
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+Other scripts:
+
+```bash
+npm run build    # typecheck + production build
+npm run preview  # preview the production build
+npm run test     # unit tests
+npm run lint     # oxlint
+```
+
+Open the local URL Vite prints (usually `http://localhost:5173`).
+
+## How the interval works
+
+Given:
+
+- **Start** `2026-07-26`
+- **Target** `2026-09-01`
+
+The grid generates dated cells from **2026-07-27** through **2026-09-01** inclusive (37 days).
+
+Status (local calendar date):
+
+| Status    | Meaning                          | Appearance   |
+|-----------|----------------------------------|--------------|
+| Passed    | Before today                     | Grayed out   |
+| Today     | Matches today’s local date       | Same as left |
+| Remaining | After today                      | White        |
+
+Date arithmetic never treats ISO date-only strings as UTC timestamps.
+
+## Time lenses
+
+A lens answers “how many of *these* do I have left?”
+
+1. Pick weekdays (e.g. Sat + Sun, or Mon/Wed/Fri)
+2. Optionally exclude specific dates
+3. Give it a label
+
+The chip shows remaining opportunities; selecting a lens dims days that are not still-available matches.
+
+## Configuration
+
+Open **Config** (top-left drawer) to edit:
+
+- Countdown title, start, target
+- Mode (calendar / compact) and shape
+- Show months (compact only)
+- Time lenses
+- Multiple countdowns (create / switch / delete)
+
+Settings are saved automatically in the browser.
+
+## Project layout
+
+```
+src/
+  App.tsx                 # App shell, fullscreen, persistence
+  types.ts                # Shared TypeScript types
+  components/
+    CalendarView.tsx      # Calendar mode + month sections
+    CompactView.tsx       # Compact grid (± month labels)
+    DayCell.tsx           # Day cell rendering + hover details
+    DatePicker.tsx        # Custom month/year date picker
+    ConfigDrawer.tsx      # Settings drawer
+    LensBar.tsx           # Active lens chips
+    LensEditor.tsx        # Create / edit lenses
+    EventHeader.tsx       # Title + stats summary
+    LiveClock.tsx         # Real-time local clock
+  lib/
+    dates.ts              # Timezone-safe calendar math
+    stats.ts              # Left / passed / total / % elapsed
+    lenses.ts             # Lens matching + opportunity counts
+    storage.ts            # localStorage load / save / migration
+```
+
+## Out of scope (for now)
+
+- Recurring calendar events
+- Accounts / auth
+- External calendar sync
+- Sharing / multiplayer
+- Deployment pipeline
+
+## License
+
+Private project (`private: true` in `package.json`).
