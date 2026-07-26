@@ -170,14 +170,112 @@ const MONTH_NAMES = [
   'December',
 ] as const
 
+const MONTH_SHORT = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+] as const
+
+const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const
+
 export function getMonthName(iso: string): string {
   const { month } = parseISODate(iso)
   return MONTH_NAMES[month - 1]!
 }
 
+export function getMonthShort(iso: string): string {
+  const { month } = parseISODate(iso)
+  return MONTH_SHORT[month - 1]!
+}
+
+export function getWeekdayShort(iso: string): string {
+  return WEEKDAY_SHORT[getWeekdaySundayZero(iso)]!
+}
+
+export function getDayOfMonth(iso: string): number {
+  return parseISODate(iso).day
+}
+
 export function formatDisplayDate(iso: string): string {
   const { year, month, day } = parseISODate(iso)
   return `${MONTH_NAMES[month - 1]} ${day}, ${year}`
+}
+
+export function formatMonthYear(year: number, month: number): string {
+  return `${MONTH_NAMES[month - 1]} ${year}`
+}
+
+export const MONTH_LABELS = MONTH_NAMES
+
+/** Inclusive year options centered on a reference year (clamped to selected). */
+export function listPickerYears(
+  selectedYear: number,
+  referenceYear: number,
+  span = 50,
+): number[] {
+  const start = Math.min(referenceYear, selectedYear) - span
+  const end = Math.max(referenceYear, selectedYear) + span
+  const years: number[] = []
+  for (let year = start; year <= end; year += 1) {
+    years.push(year)
+  }
+  return years
+}
+
+export function shiftMonth(
+  year: number,
+  month: number,
+  deltaMonths: number,
+): { year: number; month: number } {
+  const index = year * 12 + (month - 1) + deltaMonths
+  return {
+    year: Math.floor(index / 12),
+    month: (index % 12) + 1,
+  }
+}
+
+/** Sunday-start month grid cells for a calendar picker (null = padding). */
+export function buildMonthPickerCells(
+  year: number,
+  month: number,
+): Array<string | null> {
+  const first = formatISODate(year, month, 1)
+  const leading = getWeekdaySundayZero(first)
+  const daysInMonth = getDaysInMonth(year, month)
+  const cells: Array<string | null> = []
+
+  for (let i = 0; i < leading; i += 1) {
+    cells.push(null)
+  }
+
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    cells.push(formatISODate(year, month, day))
+  }
+
+  while (cells.length % 7 !== 0) {
+    cells.push(null)
+  }
+
+  return cells
+}
+
+export const WEEKDAY_LABELS_SHORT = WEEKDAY_SHORT
+
+/** Local wall-clock time as HH:MM:SS (24h). */
+export function formatLocalTime(now: Date = new Date()): string {
+  const hours = String(now.getHours()).padStart(2, '0')
+  const minutes = String(now.getMinutes()).padStart(2, '0')
+  const seconds = String(now.getSeconds()).padStart(2, '0')
+  return `${hours}:${minutes}:${seconds}`
 }
 
 export function statusLabel(status: DayStatus): string {

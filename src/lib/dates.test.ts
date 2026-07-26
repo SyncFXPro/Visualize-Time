@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   addCalendarDays,
   buildDayCells,
+  buildMonthPickerCells,
   compareISODates,
   generateIntervalDates,
   getDayStatus,
@@ -10,6 +11,7 @@ import {
   getWeekdaySundayZero,
   isLeapYear,
   parseISODate,
+  shiftMonth,
 } from './dates'
 
 describe('parseISODate', () => {
@@ -109,6 +111,22 @@ describe('buildDayCells', () => {
     expect(byDate['2026-08-01']?.status).toBe('today')
     expect(byDate['2026-08-02']?.status).toBe('remaining')
     expect(byDate['2026-08-05']?.isTarget).toBe(true)
+  })
+})
+
+describe('buildMonthPickerCells', () => {
+  it('builds a Sunday-start grid for July 2026', () => {
+    const cells = buildMonthPickerCells(2026, 7)
+    // 2026-07-01 is a Wednesday → 3 leading empties
+    expect(cells.slice(0, 3)).toEqual([null, null, null])
+    expect(cells[3]).toBe('2026-07-01')
+    expect(cells).toContain('2026-07-31')
+    expect(cells.length % 7).toBe(0)
+  })
+
+  it('shifts months across year boundaries', () => {
+    expect(shiftMonth(2026, 1, -1)).toEqual({ year: 2025, month: 12 })
+    expect(shiftMonth(2026, 12, 1)).toEqual({ year: 2027, month: 1 })
   })
 })
 

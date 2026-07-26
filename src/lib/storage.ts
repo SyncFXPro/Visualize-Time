@@ -1,4 +1,4 @@
-import type { EventConfig, VisualizationMode } from '../types'
+import type { CellShape, EventConfig, VisualizationMode } from '../types'
 import { parseISODate } from './dates'
 
 export const STORAGE_KEY = 'visualize-time-config'
@@ -8,10 +8,15 @@ export const DEFAULT_CONFIG: EventConfig = {
   startDate: '2026-07-26',
   targetDate: '2026-09-01',
   mode: 'calendar',
+  shape: 'square',
 }
 
 function isVisualizationMode(value: unknown): value is VisualizationMode {
   return value === 'calendar' || value === 'compact'
+}
+
+function isCellShape(value: unknown): value is CellShape {
+  return value === 'square' || value === 'rounded' || value === 'circle'
 }
 
 function isValidISODateString(value: unknown): value is string {
@@ -48,8 +53,11 @@ export function loadConfig(): EventConfig {
     const mode = isVisualizationMode(record.mode)
       ? record.mode
       : DEFAULT_CONFIG.mode
+    const shape = isCellShape(record.shape)
+      ? record.shape
+      : DEFAULT_CONFIG.shape
 
-    return { title, startDate, targetDate, mode }
+    return { title, startDate, targetDate, mode, shape }
   } catch {
     return { ...DEFAULT_CONFIG }
   }

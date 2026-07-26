@@ -1,5 +1,7 @@
 export type VisualizationMode = 'calendar' | 'compact'
 
+export type CellShape = 'square' | 'rounded' | 'circle'
+
 export type DayStatus = 'passed' | 'today' | 'remaining'
 
 export type EventConfig = {
@@ -9,6 +11,7 @@ export type EventConfig = {
   /** Inclusive calendar end bound (target date). */
   targetDate: string
   mode: VisualizationMode
+  shape: CellShape
 }
 
 export type DayCellData = {
