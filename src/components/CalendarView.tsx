@@ -1,6 +1,6 @@
 import type { CellShape, DayCellData, TimeLens } from '../types'
 import { getMonthName, parseISODate } from '../lib/dates'
-import { DayCell } from './DayCell'
+import { WeekAlignedGrid } from './WeekAlignedGrid'
 
 type CalendarViewProps = {
   cells: DayCellData[]
@@ -52,21 +52,13 @@ export function CalendarView({
             </h2>
             <div className="h-px flex-1 bg-[var(--border)]" />
           </div>
-          <div
-            className="grid grid-cols-3 gap-x-2 gap-y-6 sm:grid-cols-5 md:grid-cols-7"
-            role="grid"
-          >
-            {section.cells.map((cell) => (
-              <DayCell
-                key={cell.date}
-                cell={cell}
-                shape={shape}
-                variant="calendar"
-                activeLens={activeLens}
-                dimNonMatching
-              />
-            ))}
-          </div>
+          <WeekAlignedGrid
+            cells={section.cells}
+            shape={shape}
+            variant="calendar"
+            activeLens={activeLens}
+            gapClassName="gap-x-2 gap-y-6"
+          />
         </section>
       ))}
     </div>

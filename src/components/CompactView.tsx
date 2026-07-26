@@ -1,12 +1,40 @@
 import type { CellShape, DayCellData, TimeLens } from '../types'
 import { getMonthName, parseISODate } from '../lib/dates'
 import { DayCell } from './DayCell'
+import { WeekAlignedGrid } from './WeekAlignedGrid'
 
 type CompactViewProps = {
   cells: DayCellData[]
   shape: CellShape
   showMonths?: boolean
   activeLens?: TimeLens | null
+}
+
+type MonthSection = {
+  key: string
+  label: string
+  cells: DayCellData[]
+}
+
+function groupByMonth(cells: DayCellData[]): MonthSection[] {
+  const sections: MonthSection[] = []
+
+  for (const cell of cells) {
+    const { year, month } = parseISODate(cell.date)
+    const key = `${year}-${month}`
+    const last = sections[sections.length - 1]
+    if (!last || last.key !== key) {
+      sections.push({
+        key,
+        label: `${getMonthName(cell.date)} ${year}`,
+        cells: [cell],
+      })
+    } else {
+      last.cells.push(cell)
+    }
+  }
+
+  return sections
 }
 
 export function CompactView({
@@ -35,40 +63,24 @@ export function CompactView({
     )
   }
 
-  return (
-    <div
-      className="flex flex-wrap gap-2.5"
-      role="grid"
-      aria-label="Compact visualization"
-    >
-      {cells.map((cell, index) => {
-        const prev = cells[index - 1]
-        const showMonthBoundary =
-          !prev ||
-          parseISODate(prev.date).month !== parseISODate(cell.date).month ||
-          parseISODate(prev.date).year !== parseISODate(cell.date).year
+  const sections = groupByMonth(cells)
 
-        return (
-          <div key={cell.date} className="contents">
-            {showMonthBoundary ? (
-              <div
-                className="basis-full border-t border-[var(--border)] pt-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-secondary)] first:border-t-0 first:pt-0"
-                role="presentation"
-              >
-                {getMonthName(cell.date)} {parseISODate(cell.date).year}
-              </div>
-            ) : null}
-            <div className="w-7 sm:w-8">
-              <DayCell
-                cell={cell}
-                shape={shape}
-                activeLens={activeLens}
-                dimNonMatching
-              />
-            </div>
+  return (
+    <div className="w-full space-y-6" aria-label="Compact visualization">
+      {sections.map((section) => (
+        <section key={section.key} aria-label={section.label}>
+          <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-secondary)]">
+            {section.label}
           </div>
-        )
-      })}
+          <WeekAlignedGrid
+            cells={section.cells}
+            shape={shape}
+            variant="compact"
+            activeLens={activeLens}
+            gapClassName="gap-x-2 gap-y-2.5"
+          />
+        </section>
+      ))}
     </div>
   )
 }
